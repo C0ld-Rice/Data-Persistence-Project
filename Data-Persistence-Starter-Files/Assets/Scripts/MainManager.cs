@@ -3,25 +3,43 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using System.IO;
 
 public class MainManager : MonoBehaviour
 {
+    public static MainManager Instance;
+    
     public Brick BrickPrefab;
     public int LineCount = 6;
     public Rigidbody Ball;
 
     public Text ScoreText;
     public GameObject GameOverText;
-    
+    public Text BestScoreText;
+    public Canvas mainCanvas;
+    private string myString = "";
+    private int finalPoints;
+
     private bool m_Started = false;
-    private int m_Points;
+    static int m_Points;
     
     private bool m_GameOver = false;
 
-    
     // Start is called before the first frame update
+
+    private void Awake()
+    {
+        if (Instance != null)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        LoadScore();
+    }
     void Start()
     {
+        UploadData();
         const float step = 0.6f;
         int perLine = Mathf.FloorToInt(4.0f / step);
         
@@ -34,6 +52,7 @@ public class MainManager : MonoBehaviour
                 var brick = Instantiate(BrickPrefab, position, Quaternion.identity);
                 brick.PointValue = pointCountArray[i];
                 brick.onDestroyed.AddListener(AddPoint);
+                //UploadHighScore();
             }
         }
     }
@@ -72,5 +91,48 @@ public class MainManager : MonoBehaviour
     {
         m_GameOver = true;
         GameOverText.SetActive(true);
+        finalPoints = m_Points;
+        SaveScore();
+    }
+
+    void UploadData()
+    {
+        myString = DataManager.Instance.nameText.text.ToString();
+        BestScoreText.text = $"Best Score : {myString} : {finalPoints}";
+    }
+
+
+    void UploadHighScore()
+    {
+        BestScoreText.text += $" : {m_Points}";
+    }
+
+    [System.Serializable]
+
+    class SaveData
+    {
+        public int finalPoints;
+    }
+
+    public void SaveScore()
+    {
+        SaveData data = new SaveData();
+        data.finalPoints = finalPoints;
+
+        string json = JsonUtility.ToJson(data);
+
+        File.WriteAllText(Application.persistentDataPath + "/savefile.json", json);
+    }
+
+    public void LoadScore()
+    {
+        string path = Application.persistentDataPath + "/savefile.json";
+        if (File.Exists(path))
+        {
+            string json = File.ReadAllText(path);
+            SaveData data = JsonUtility.FromJson<SaveData>(json);
+
+            finalPoints = data.finalPoints;
+        }
     }
 }
